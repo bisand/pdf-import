@@ -1,3 +1,4 @@
+import sys
 import re
 import zlib
 
@@ -15,18 +16,22 @@ for d in data:
     print(d)
 
 pdf = open("test.pdf", "r").read()
-regex = r"(.?)stream(.|\n)BT(?P<text>.*?)ET(.|\n)endstream"
-regex2 = r".*Tm \((?P<text>.*)\) Tj"
+regexPage = r"(.?)stream(.|\n)BT(?P<page>.*?)ET(.|\n)endstream"
+regexText = r"\((?P<text>.*)\)\s?Tj"
 
-matches = re.finditer(regex, pdf, re.DOTALL)
-try:
-    matchesEnum = enumerate(matches, start=1)
-    for matchNum, match in matchesEnum:
-        print ("{group}".format(group = match.group("text")))
-        # TODO: Parse single result lines to remove pdf keywords.
+matches = re.finditer(regexPage, pdf, re.DOTALL)
 
+matchesEnum = enumerate(matches, start=1)
 
-except:
-    pass
+for matchNum, match in matchesEnum:
+    pageText = match.group("page")
+    subMatches = re.finditer(regexText, pageText, re.MULTILINE)
+    subMatchesEnum = enumerate(subMatches, start=1)
+
+    for subMatchNum, subMatch in subMatchesEnum:
+        subGroupText = subMatch.group("text")
+        subText = "{group}".format(group=subGroupText)
+        print(subText)
+
 
 print("Finish!")
