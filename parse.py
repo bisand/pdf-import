@@ -1,16 +1,10 @@
 import sys
 import re
 import zlib
+import func
 
 
-def slices(s, *args):
-    position = 0
-    for length in args:
-        yield s[position:position + length]
-        position += length
-
-
-data = slices('Dette er en test', 6, 3, 3, 10)
+data = func.slices('Dette er en test', 6, 3, 3, 10)
 
 for d in data:
     print(d)
@@ -22,7 +16,7 @@ for e in encodings:
     try:
         with open("test.pdf", "r", encoding=e) as strm:
             pdf = strm.read()
-            
+
     except UnicodeDecodeError:
         print('got unicode error with %s , trying different encoding' % e)
     else:
