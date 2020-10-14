@@ -1,24 +1,39 @@
 import re
 import zlib
 
+
 def slices(s, *args):
     position = 0
     for length in args:
         yield s[position:position + length]
         position += length
 
+
 data = slices('Dette er en test', 6, 3, 3, 10)
 
 for d in data:
     print(d)
 
-pdf = open("some_doc.pdf", "rb").read()
-stream = re.compile(rb'.*?FlateDecode.*?stream(.*?)endstream', re.S)
+pdf = open("test.pdf", "r").read()
+regex = r"(.?)stream(.|\n)BT(?P<text>.*?)ET(.|\n)endstream"
+regex2 = r".*Tm \((?P<text>.*)\) Tj"
 
-for s in stream.findall(pdf):
-    s = s.strip(b'\r\n')
-    try:
-        print(zlib.decompress(s))
-        print("")
-    except:
-        pass
+matches = re.finditer(regex, pdf, re.DOTALL)
+try:
+    matchesEnum = enumerate(matches, start=1)
+    for matchNum, match in matchesEnum:
+        print ("{group}".format(group = match.group("text")))
+
+except:
+    pass
+
+# elements = stream.findall(pdf)
+# for s in elements:
+#     try:
+#         # print(zlib.decompress(s))
+
+#         print(s)
+#     except:
+#         pass
+
+print("Finish!")
