@@ -1,13 +1,15 @@
 import sys
 import re
 import zlib
-import func
+import tools
 
-
-data = func.slices('Dette er en test', 6, 3, 3, 10)
+# Testing purposes only
+data = tools.slices('Dette er en test', 6, 3, 3, 10)
 
 for d in data:
     print(d)
+
+# Main program
 encodings = ["utf-8", "ISO-8859-1", "windows-1250", "windows-1252"]
 regexPage = r"(.?)stream(.|\n)BT(?P<page>.*?)ET(.|\n)endstream"
 regexText = r"\((?P<text>.*)\)\s*?Tj"
