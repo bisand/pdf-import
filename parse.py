@@ -23,17 +23,10 @@ try:
     matchesEnum = enumerate(matches, start=1)
     for matchNum, match in matchesEnum:
         print ("{group}".format(group = match.group("text")))
+        # TODO: Parse single result lines to remove pdf keywords.
+
 
 except:
     pass
-
-# elements = stream.findall(pdf)
-# for s in elements:
-#     try:
-#         # print(zlib.decompress(s))
-
-#         print(s)
-#     except:
-#         pass
 
 print("Finish!")
