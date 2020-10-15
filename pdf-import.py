@@ -1,42 +1,151 @@
 import sys
 import re
 import zlib
-import tools
+import sqlite3
+from sqlite3 import Error
 
-# Testing purposes only
-data = tools.slices('Dette er en test', 6, 3, 3, 10)
+database = "test.db"
 
-for d in data:
-    print(d)
+sql_create_agents_table = """CREATE TABLE IF NOT EXISTS "agents" (
+                                "id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+                                "agentno"	TEXT,
+                                "agentname"	TEXT
+                            );"""
 
-# Main program
-encodings = ["utf-8", "ISO-8859-1", "windows-1250", "windows-1252"]
-regexPage = r"(.?)stream(.|\n)BT(?P<page>.*?)ET(.|\n)endstream"
-regexText = r"\((?P<text>.*)\)\s*?Tj"
+# Functions and declarations
 
-for e in encodings:
+
+def slices(s, *args):
+    position = 0
+    for length in args:
+        yield s[position:position + length]
+        position += length
+
+
+def db_create_connection(db_file):
+    """ create a database connection to the SQLite database
+        specified by db_file
+    :param db_file: database file
+    :return: Connection object or None
+    """
+    conn = None
     try:
-        with open("test.pdf", "r", encoding=e) as strm:
-            pdf = strm.read()
+        conn = sqlite3.connect(db_file)
+        return conn
+    except Error as e:
+        print(e)
 
-    except UnicodeDecodeError:
-        print('got unicode error with %s , trying different encoding' % e)
-    else:
-        print('opening the file with encoding:  %s ' % e)
+    return conn
 
-        matches = re.finditer(regexPage, pdf, re.DOTALL)
 
-        matchesEnum = enumerate(matches, start=1)
+def db_create_table(conn, create_table_sql):
+    """ create a table from the create_table_sql statement
+    :param conn: Connection object
+    :param create_table_sql: a CREATE TABLE statement
+    :return:
+    """
+    try:
+        c = conn.cursor()
+        c.execute(create_table_sql)
+    except Error as e:
+        print(e)
 
-        for matchNum, match in matchesEnum:
-            pageText = match.group("page")
-            subMatches = re.finditer(regexText, pageText, re.MULTILINE | re.IGNORECASE)
-            subMatchesEnum = enumerate(subMatches, start=1)
 
-            for subMatchNum, subMatch in subMatchesEnum:
-                subGroupText = subMatch.group("text")
-                subText = "{group}".format(group=subGroupText)
-                print(subText)
-        break
+def db_add_agent(database, agent_no, agentName):
+    """ Save agent to database """
+    conn = None
+    try:
+        conn = db_create_connection(database)
+        if conn is not None:
+            db_create_table(conn, sql_create_agents_table)
+            sql = '''SELECT MAX(id) AS id, agentno, agentname FROM agents WHERE trim(agentno)=trim(?) GROUP BY agentno, agentname '''
+            cur = conn.cursor()
+            cur.execute(sql, (agent_no,))
+            agents = cur.fetchone()
 
-print("Finish!")
+            if not agents:
+                sql = '''INSERT INTO agents(agentno, agentname) VALUES(?,?)'''
+                cur = conn.cursor()
+                cur.execute(sql, (agent_no, agentName))
+                conn.commit()
+                return cur.lastrowid
+            else:
+                return agents[0]
+        else:
+            print("Error! cannot create the database connection.")
+    except Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.close()
+
+
+def main():
+
+    # Testing purposes only
+    data = slices('Dette er en test', 6, 3, 3, 10)
+
+    for d in data:
+        print(d)
+
+    # Main program
+    encodings = ["utf-8", "ISO-8859-1", "windows-1250", "windows-1252"]
+    regex_page = r"((.?)stream(.|\n)BT(?P<page>.*?)ET(.|\n)endstream)|(\/Title(?P<title>.*?)\n)"
+    regex_objects = r"(?P<object>[0-9]+\s+[0-9]+\s+obj\s.+?endobj)"
+    regex_text = r"\((?P<text>.*)\)\s*?Tj"
+
+    for e in encodings:
+        try:
+            with open("test.pdf", "r", encoding=e) as strm:
+                pdf = strm.read()
+                strm.close()
+
+        except UnicodeDecodeError:
+            print('got unicode error with %s , trying different encoding' % e)
+        else:
+            print('opening the file with encoding:  %s ' % e)
+
+            matches = re.finditer(regex_page, pdf, re.DOTALL)
+            matches_enum = enumerate(matches, start=1)
+            elements = []
+
+            for matchNum, match in matches_enum:
+                page = match.group("page")
+                pageTitle = match.group("title")
+                if not page:
+                    continue
+                sub_matches = re.finditer(regex_text, page, re.MULTILINE | re.IGNORECASE)
+                sub_matches_enum = enumerate(sub_matches, start=1)
+
+                for subMatchNum, sub_match in sub_matches_enum:
+                    sub_group_text = sub_match.group("text")
+                    elements.append(sub_group_text)
+
+            agent_no = ""
+            agent_name = ""
+            new_agent = False
+            new_agent_saved = False
+
+            for element in elements:
+                if element[53:59] == "AGENT:":
+                    agent_name = element[60:]
+                if element[40:48] == "AGENTNR:":
+                    if element[50:60] != agent_no:
+                        new_agent = True
+                        new_agent_saved = False
+                        agent_no = element[50:60]
+
+                if new_agent and not new_agent_saved:
+                    db_add_agent(database, agent_no, agent_name)
+                    agent_no = ""
+                    agent_name = ""
+                    new_agent = False
+                    new_agent_saved = True
+
+                print(element)
+
+            break
+
+
+if __name__ == '__main__':
+    main()
