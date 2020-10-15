@@ -121,6 +121,8 @@ def main():
                     sub_group_text = sub_match.group("text")
                     elements.append(sub_group_text)
 
+                elements.append("### END ###")
+
             agent_no = ""
             agent_name = ""
             new_agent = False
@@ -134,6 +136,12 @@ def main():
                         new_agent = True
                         new_agent_saved = False
                         agent_no = element[50:60]
+                if element[5:] == "AVTALENR         NAVN                           PRODUKT                      DATO   SJON":
+                    pass
+                if element[5:] == "AVTALE-NR               NAVN         KJENNMRK N T    DATO      PREMIE    PROVISJON":
+                    pass
+                if element[5:] == "AVTALENR  KUNDENAVN       PRODUKT         K  K  DATO         FORV.INNBET  PROVISJON":
+                    pass
 
                 if new_agent and not new_agent_saved:
                     db_add_agent(database, agent_no, agent_name)
