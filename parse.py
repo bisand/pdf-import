@@ -10,7 +10,7 @@ for d in data:
     print(d)
 encodings = ["utf-8", "ISO-8859-1", "windows-1250", "windows-1252"]
 regexPage = r"(.?)stream(.|\n)BT(?P<page>.*?)ET(.|\n)endstream"
-regexText = r"\((?P<text>.*)\)\s?Tj"
+regexText = r"\((?P<text>.*)\)\s*?Tj"
 
 for e in encodings:
     try:
@@ -28,7 +28,7 @@ for e in encodings:
 
         for matchNum, match in matchesEnum:
             pageText = match.group("page")
-            subMatches = re.finditer(regexText, pageText, re.MULTILINE)
+            subMatches = re.finditer(regexText, pageText, re.MULTILINE | re.IGNORECASE)
             subMatchesEnum = enumerate(subMatches, start=1)
 
             for subMatchNum, subMatch in subMatchesEnum:
