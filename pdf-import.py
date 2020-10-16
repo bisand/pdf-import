@@ -124,8 +124,7 @@ def main():
 
                 elements.append("### END ###")
 
-            setlocale(LC_NUMERIC, "nb_NO.UTF-8")
-
+            # TODO: Convert these variable to appropriate classes.
             agent_no = ""
             agent_name = ""
             new_agent = False
@@ -138,29 +137,31 @@ def main():
 
             for element in elements:
                 if element[53:59] == "AGENT:":
-                    agent_name = element[60:]
+                    agent_name = str(element[60:]).strip()
                     continue
                 
                 if element[40:48] == "AGENTNR:":
                     if element[50:60] != agent_no:
                         new_agent = True
                         new_agent_saved = False
-                        agent_no = element[50:60]
+                        agent_no = str(element[50:60]).strip()
                     continue                
 
                 if element[10:33] == "PROVISJONSAVREGNING FRA":
                     print("PROVISJONSAVREGNING START")
                     commission_settlemenmt = True
                     commission_settlemenmt_amount = 0
-                    commission_settlemenmt_name = element[34:68]
-                    commission_settlemenmt_periode = element[77:]
+                    commission_settlemenmt_name = str(element[34:68]).strip()
+                    commission_settlemenmt_periode = str(element[77:]).strip()
                     continue
 
                 if commission_settlemenmt and (element[5:14] != "PROVISJON") and (element[5:11] != "TOTALT") and (element[0:] != "### END ###"):
                     print("PROVISJONSAVREGNING COLLECTION")
                     commission_settlemenmt = True
-                    commission_settlemenmt_amount += atof(element[50:])
-                    commission_settlemenmt_items.append(element[5:40]+";"+element[50:])
+                    amount = str(element[50:]).replace(".", "")
+                    item = str(element[5:40]).strip()
+                    commission_settlemenmt_amount += atof(amount)
+                    commission_settlemenmt_items.append(item+";"+amount)
                     continue
                 
                 if commission_settlemenmt and element[5:11] == "TOTALT":
