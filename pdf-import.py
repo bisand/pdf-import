@@ -139,13 +139,13 @@ def main():
                 if element[53:59] == "AGENT:":
                     agent_name = str(element[60:]).strip()
                     continue
-                
+
                 if element[40:48] == "AGENTNR:":
                     if element[50:60] != agent_no:
                         new_agent = True
                         new_agent_saved = False
                         agent_no = str(element[50:60]).strip()
-                    continue                
+                    continue
 
                 if element[10:33] == "PROVISJONSAVREGNING FRA":
                     print("PROVISJONSAVREGNING START")
@@ -163,30 +163,34 @@ def main():
                     commission_settlemenmt_amount += atof(amount)
                     commission_settlemenmt_items.append(item+";"+amount)
                     continue
-                
+
                 if commission_settlemenmt and element[5:11] == "TOTALT":
                     print("PROVISJONSAVREGNING END")
                     commission_settlemenmt = False
                     continue
-                
+
                 if element[32:] == "*** STYKKPROVISJON ***":
-                    print("Found!")
+                    print("Found: STYKKPROVISJON")
                     continue
-                
+
                 if element[27:] == "*** STYKKPROVISJON NÆRINGSLIV ***":
-                    print("Found!")
+                    print("Found: STYKKPROVISJON NÆRINGSLIV")
                     continue
-                
+
+                if element[33:] == "** NORDEA LIV **":
+                    print("Found: NORDEA LIV")
+                    continue
+
                 if element[5:] == "AVTALENR         NAVN                           PRODUKT                      DATO   SJON":
-                    print("Found!")
+                    print("Found: AVTALENR")
                     continue
-                
+
                 if element[5:] == "AVTALE-NR               NAVN         KJENNMRK N T    DATO      PREMIE    PROVISJON":
-                    print("Found!")
+                    print("Found: AVTALE-NR")
                     continue
-                
+
                 if element[5:] == "AVTALENR  KUNDENAVN       PRODUKT         K  K  DATO         FORV.INNBET  PROVISJON":
-                    print("Found!")
+                    print("Found: AVTALENR  KUNDENAVN")
                     continue
 
                 if new_agent and not new_agent_saved:
