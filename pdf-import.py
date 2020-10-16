@@ -3,6 +3,7 @@ import re
 import zlib
 import sqlite3
 from sqlite3 import Error
+from locale import atof, setlocale, LC_NUMERIC
 
 database = "test.db"
 
@@ -123,25 +124,69 @@ def main():
 
                 elements.append("### END ###")
 
+            setlocale(LC_NUMERIC, "nb_NO.UTF-8")
+
             agent_no = ""
             agent_name = ""
             new_agent = False
             new_agent_saved = False
+            commission_settlemenmt = False
+            commission_settlemenmt_amount = 0.0
+            commission_settlemenmt_name = ""
+            commission_settlemenmt_periode = ""
+            commission_settlemenmt_items = []
 
             for element in elements:
                 if element[53:59] == "AGENT:":
                     agent_name = element[60:]
+                    continue
+                
                 if element[40:48] == "AGENTNR:":
                     if element[50:60] != agent_no:
                         new_agent = True
                         new_agent_saved = False
                         agent_no = element[50:60]
+                    continue                
+
+                if element[10:33] == "PROVISJONSAVREGNING FRA":
+                    print("PROVISJONSAVREGNING START")
+                    commission_settlemenmt = True
+                    commission_settlemenmt_amount = 0
+                    commission_settlemenmt_name = element[34:68]
+                    commission_settlemenmt_periode = element[77:]
+                    continue
+
+                if commission_settlemenmt and (element[5:14] != "PROVISJON") and (element[5:11] != "TOTALT") and (element[0:] != "### END ###"):
+                    print("PROVISJONSAVREGNING COLLECTION")
+                    commission_settlemenmt = True
+                    commission_settlemenmt_amount += atof(element[50:])
+                    commission_settlemenmt_items.append(element[5:40]+";"+element[50:])
+                    continue
+                
+                if commission_settlemenmt and element[5:11] == "TOTALT":
+                    print("PROVISJONSAVREGNING END")
+                    commission_settlemenmt = False
+                    continue
+                
+                if element[32:] == "*** STYKKPROVISJON ***":
+                    print("Found!")
+                    continue
+                
+                if element[27:] == "*** STYKKPROVISJON NÆRINGSLIV ***":
+                    print("Found!")
+                    continue
+                
                 if element[5:] == "AVTALENR         NAVN                           PRODUKT                      DATO   SJON":
-                    pass
+                    print("Found!")
+                    continue
+                
                 if element[5:] == "AVTALE-NR               NAVN         KJENNMRK N T    DATO      PREMIE    PROVISJON":
-                    pass
+                    print("Found!")
+                    continue
+                
                 if element[5:] == "AVTALENR  KUNDENAVN       PRODUKT         K  K  DATO         FORV.INNBET  PROVISJON":
-                    pass
+                    print("Found!")
+                    continue
 
                 if new_agent and not new_agent_saved:
                     db_add_agent(database, agent_no, agent_name)
