@@ -1,3 +1,5 @@
+from ast import Str
+from io import StringIO
 import sys
 import re
 import zlib
@@ -80,6 +82,19 @@ def db_add_agent(database, agent_no, agentName):
         if conn:
             conn.close()
 
+def db_save_commission_settlement(name, periode, total_amount, items):
+    """ Save Commission settlement to the database """
+    return
+
+def db_save_commission_report(name, periode, total_amount, items):
+    """ Save Commission report to the database """
+    return
+
+def get_str(data: any):
+    return str(data).strip()
+
+def get_float(data: any):
+    return atof(str(data).replace(".", "").replace(",", "."))
 
 def main():
 
@@ -130,43 +145,64 @@ def main():
             new_agent = False
             new_agent_saved = False
             commission_settlemenmt = False
-            commission_settlemenmt_amount = 0.0
             commission_settlemenmt_name = ""
             commission_settlemenmt_periode = ""
             commission_settlemenmt_items = []
 
+            commission_report = False
+            commission_report_name = ""
+            commission_report_periode = ""
+            commission_report_items = []
+
             for element in elements:
                 if element[53:59] == "AGENT:":
-                    agent_name = str(element[60:]).strip()
+                    agent_name = get_str(element[60:])
                     continue
 
                 if element[40:48] == "AGENTNR:":
                     if element[50:60] != agent_no:
                         new_agent = True
                         new_agent_saved = False
-                        agent_no = str(element[50:60]).strip()
+                        agent_no = get_str(element[50:60])
                     continue
 
                 if element[10:33] == "PROVISJONSAVREGNING FRA":
                     print("PROVISJONSAVREGNING START")
                     commission_settlemenmt = True
-                    commission_settlemenmt_amount = 0
-                    commission_settlemenmt_name = str(element[34:68]).strip()
-                    commission_settlemenmt_periode = str(element[77:]).strip()
+                    commission_settlemenmt_name = get_str(element[33:65])
+                    commission_settlemenmt_periode = get_str(element[75:])
                     continue
 
-                if commission_settlemenmt and (element[5:14] != "PROVISJON") and (element[5:11] != "TOTALT") and (element[0:] != "### END ###"):
+                if commission_settlemenmt and (element[5:14] != "PROVISJON") and (element[5:11] != "TOTALT"):
                     print("PROVISJONSAVREGNING COLLECTION")
-                    commission_settlemenmt = True
-                    amount = str(element[50:]).replace(".", "")
-                    item = str(element[5:40]).strip()
-                    commission_settlemenmt_amount += atof(amount)
-                    commission_settlemenmt_items.append(item+";"+amount)
+                    commission_settlemenmt_items.append(element)
                     continue
 
                 if commission_settlemenmt and element[5:11] == "TOTALT":
                     print("PROVISJONSAVREGNING END")
                     commission_settlemenmt = False
+                    total_amount = get_float(element[40:])
+                    db_save_commission_settlement(commission_settlemenmt_name, commission_settlemenmt_periode, total_amount, commission_settlemenmt_items)
+                    continue
+
+                # Commission report
+                if element[10:33] == "PROVISJONSOPPGAVE FRA":
+                    print("PROVISJONSOPPGAVE START")
+                    commission_report = True
+                    commission_report_name = get_str(element[33:65])
+                    commission_report_periode = get_str(element[75:])
+                    continue
+
+                if commission_report and (element[5:11] != "TOTALT"):
+                    print("PROVISJONSOPPGAVE COLLECTION")
+                    commission_report_items.append(element)
+                    continue
+
+                if commission_report and element[5:11] == "TOTALT":
+                    print("PROVISJONSOPPGAVE END")
+                    commission_report = False
+                    total_amount = get_float(element[40:])
+                    db_save_commission_report(commission_report_name, commission_report_periode, total_amount, commission_report_items)
                     continue
 
                 if element[32:] == "*** STYKKPROVISJON ***":
