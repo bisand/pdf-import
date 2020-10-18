@@ -1,11 +1,9 @@
-from ast import Str
-from io import StringIO
-import sys
+from enum import Enum, auto
 import re
-import zlib
 import sqlite3
 from sqlite3 import Error
 from locale import atof, setlocale, LC_NUMERIC
+from typing import Optional
 
 database = "test.db"
 
@@ -15,6 +13,13 @@ sql_create_agents_table = """CREATE TABLE IF NOT EXISTS "agents" (
                                 "agentname"	TEXT
                             );"""
 
+sql_create_commission_settlement_table = """CREATE TABLE IF NOT EXISTS "commission_settlement" (
+                                            "id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                                            "agent_no"	TEXT NOT NULL,
+                                            "description"	TEXT,
+                                            "amount"	NUMERIC
+                                        );"""
+
 # Functions and declarations
 
 
@@ -23,6 +28,39 @@ def slices(s, *args):
     for length in args:
         yield s[position:position + length]
         position += length
+
+
+class ProcessingStep(Enum):
+    Default = auto()
+    Header = auto()
+    Details = auto()
+
+
+def get_str(data: any):
+    return str(data).strip()
+
+
+def get_float(data: any):
+    return atof(str(data).replace(".", "").replace(",", "."))
+
+
+def texist(source, start, substr):
+    txt_length = len(substr)
+    if not substr:
+        return False
+    if start < 0 or start > len(source)-1 or start+txt_length > len(source):
+        return False
+    if source[start:(start+txt_length)] == substr:
+        return True
+
+    return False
+
+
+def ss(source, start, length=None):
+    if length == None:
+        return source[start:]
+
+    return source[start:start+length]
 
 
 def db_create_connection(db_file):
@@ -61,13 +99,13 @@ def db_add_agent(database, agent_no, agentName):
         conn = db_create_connection(database)
         if conn is not None:
             db_create_table(conn, sql_create_agents_table)
-            sql = '''SELECT MAX(id) AS id, agentno, agentname FROM agents WHERE trim(agentno)=trim(?) GROUP BY agentno, agentname '''
+            sql = """SELECT MAX(id) AS id, agentno, agentname FROM agents WHERE trim(agentno)=trim(?) GROUP BY agentno, agentname """
             cur = conn.cursor()
             cur.execute(sql, (agent_no,))
             agents = cur.fetchone()
 
             if not agents:
-                sql = '''INSERT INTO agents(agentno, agentname) VALUES(?,?)'''
+                sql = """INSERT INTO agents(agentno, agentname) VALUES(?,?)"""
                 cur = conn.cursor()
                 cur.execute(sql, (agent_no, agentName))
                 conn.commit()
@@ -82,19 +120,43 @@ def db_add_agent(database, agent_no, agentName):
         if conn:
             conn.close()
 
-def db_save_commission_settlement(name, periode, total_amount, items):
+
+def db_save_commission_settlement(agentno, items):
     """ Save Commission settlement to the database """
+    conn = None
+    try:
+        conn = db_create_connection(database)
+        if conn is not None:
+            db_create_table(conn, sql_create_commission_settlement_table)
+            sql = """INSERT INTO commission_settlement(agentno, description, amount) VALUES(?,?,?)"""
+            cur = conn.cursor()
+            for item in items:
+                cur.execute(sql, (agentno, ss(item, 5, 39), ss(item, 44)))
+            conn.commit()
+            return cur.lastrowid
+        else:
+            print("Error! cannot create the database connection.")
+    except Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.close()
     return
 
-def db_save_commission_report(name, periode, total_amount, items):
-    """ Save Commission report to the database """
+
+def db_save_commission_report_1(name, periode, total_amount, items):
+    """ Save Commission report 1 to the database """
     return
 
-def get_str(data: any):
-    return str(data).strip()
 
-def get_float(data: any):
-    return atof(str(data).replace(".", "").replace(",", "."))
+def db_save_commission_report_2(name, periode, total_amount, items):
+    """ Save Commission report 2 to the database """
+    return
+
+
+def db_save_commission_report_3(name, periode, total_amount, items):
+    """ Save Commission report 2 to the database """
+    return
 
 def main():
 
@@ -142,8 +204,8 @@ def main():
             # TODO: Convert these variable to appropriate classes.
             agent_no = ""
             agent_name = ""
-            new_agent = False
-            new_agent_saved = False
+            processing_step: ProcessingStep = ProcessingStep.Default
+
             commission_settlemenmt = False
             commission_settlemenmt_name = ""
             commission_settlemenmt_periode = ""
@@ -155,86 +217,88 @@ def main():
             commission_report_items = []
 
             for element in elements:
-                if element[53:59] == "AGENT:":
-                    agent_name = get_str(element[60:])
+                if texist(element, 53, "AGENT:"):
+                    agent_name = get_str(ss(element, 60))
                     continue
 
-                if element[40:48] == "AGENTNR:":
-                    if element[50:60] != agent_no:
-                        new_agent = True
-                        new_agent_saved = False
-                        agent_no = get_str(element[50:60])
+                if texist(element, 40, "AGENTNR:"):
+                    if get_str(ss(element, 50, 10)) != agent_no:
+                        agent_no = get_str(ss(element, 50, 10))
+                        db_add_agent(database, agent_no, agent_name)
                     continue
 
-                if element[10:33] == "PROVISJONSAVREGNING FRA":
-                    print("PROVISJONSAVREGNING START")
+                # Commission settlement
+                if texist(element, 10, "PROVISJONSAVREGNING FRA"):
                     commission_settlemenmt = True
-                    commission_settlemenmt_name = get_str(element[33:65])
-                    commission_settlemenmt_periode = get_str(element[75:])
+                    commission_settlemenmt_name = get_str(ss(element, 34, 34))
+                    commission_settlemenmt_periode = get_str(ss(element, 78))
                     continue
 
-                if commission_settlemenmt and (element[5:14] != "PROVISJON") and (element[5:11] != "TOTALT"):
-                    print("PROVISJONSAVREGNING COLLECTION")
+                if commission_settlemenmt and not texist(element, 5, "PROVISJON") and not texist(element, 5, "TOTALT"):
                     commission_settlemenmt_items.append(element)
                     continue
 
-                if commission_settlemenmt and element[5:11] == "TOTALT":
-                    print("PROVISJONSAVREGNING END")
+                if commission_settlemenmt and texist(element, 5, "PROVISJON"):
+                    commission_amount = get_float(ss(element, 31))
+                    continue
+
+                if commission_settlemenmt and texist(element, 5, "TOTALT"):
                     commission_settlemenmt = False
-                    total_amount = get_float(element[40:])
+                    total_amount = get_float(ss(element, 31))
                     db_save_commission_settlement(commission_settlemenmt_name, commission_settlemenmt_periode, total_amount, commission_settlemenmt_items)
                     continue
 
                 # Commission report
-                if element[10:33] == "PROVISJONSOPPGAVE FRA":
-                    print("PROVISJONSOPPGAVE START")
+                if texist(element, 10, "PROVISJONSOPPGAVE FRA"):
                     commission_report = True
-                    commission_report_name = get_str(element[33:65])
-                    commission_report_periode = get_str(element[75:])
+                    commission_report_name = get_str(ss(element, 32, 34))
+                    commission_report_periode = get_str(ss(element, 75))
+                    commission_report_items.clear()
+                    processing_step = ProcessingStep.Default
                     continue
 
-                if commission_report and (element[5:11] != "TOTALT"):
-                    print("PROVISJONSOPPGAVE COLLECTION")
-                    commission_report_items.append(element)
+                if commission_report and not texist(element, 50, "TOTALT") and not texist(element, 76, "TOTALT:"):
+                    if processing_step == ProcessingStep.Default:
+                        commission_report_type = get_str(element).strip("* ")
+                        processing_step = ProcessingStep.Header
+                        continue
+                    if processing_step == ProcessingStep.Header and texist(element, 5, "AVTALE-NR               NAVN"):
+                        processing_step = ProcessingStep.Details
+                        continue
+                    if processing_step == ProcessingStep.Header and texist(element, 5, "AVTALENR         NAVN"):
+                        processing_step = ProcessingStep.Details
+                        continue
+                    if processing_step == ProcessingStep.Header and texist(element, 5, "AVTALENR  KUNDENAVN"):
+                        processing_step = ProcessingStep.Details
+                        continue
+                    if processing_step == ProcessingStep.Details and texist(element, 0, "### END ###"):
+                        processing_step = ProcessingStep.Header
+                        continue
+                    if processing_step == ProcessingStep.Details:
+                        commission_report_items.append(element)
+
                     continue
 
-                if commission_report and element[5:11] == "TOTALT":
-                    print("PROVISJONSOPPGAVE END")
+                if commission_report and texist(element, 50, "TOTALT"):
                     commission_report = False
-                    total_amount = get_float(element[40:])
-                    db_save_commission_report(commission_report_name, commission_report_periode, total_amount, commission_report_items)
+                    processing_step = ProcessingStep.Default
+                    total_amount = get_float(ss(element, 70, 15))
+                    db_save_commission_report_1(commission_report_name, commission_report_periode, total_amount, commission_report_items)
                     continue
 
-                if element[32:] == "*** STYKKPROVISJON ***":
-                    print("Found: STYKKPROVISJON")
+                if commission_report and texist(element, 76, "TOTALT:"):
+                    commission_report = False
+                    processing_step = ProcessingStep.Default
+                    total_amount = get_float(ss(element, 83))
+                    db_save_commission_report_2(commission_report_name, commission_report_periode, total_amount, commission_report_items)
                     continue
 
-                if element[27:] == "*** STYKKPROVISJON NÆRINGSLIV ***":
-                    print("Found: STYKKPROVISJON NÆRINGSLIV")
+                if commission_report and texist(element, 53, "TOTALT:"):
+                    commission_report = False
+                    processing_step = ProcessingStep.Default
+                    total_amount = get_float(ss(element, 83))
+                    db_save_commission_report_3(commission_report_name, commission_report_periode, total_amount, commission_report_items)
                     continue
-
-                if element[33:] == "** NORDEA LIV **":
-                    print("Found: NORDEA LIV")
-                    continue
-
-                if element[5:] == "AVTALENR         NAVN                           PRODUKT                      DATO   SJON":
-                    print("Found: AVTALENR")
-                    continue
-
-                if element[5:] == "AVTALE-NR               NAVN         KJENNMRK N T    DATO      PREMIE    PROVISJON":
-                    print("Found: AVTALE-NR")
-                    continue
-
-                if element[5:] == "AVTALENR  KUNDENAVN       PRODUKT         K  K  DATO         FORV.INNBET  PROVISJON":
-                    print("Found: AVTALENR  KUNDENAVN")
-                    continue
-
-                if new_agent and not new_agent_saved:
-                    db_add_agent(database, agent_no, agent_name)
-                    agent_no = ""
-                    agent_name = ""
-                    new_agent = False
-                    new_agent_saved = True
 
                 print(element)
 
