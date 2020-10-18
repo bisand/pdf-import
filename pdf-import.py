@@ -193,7 +193,8 @@ def db_save_commission_report_1(agent_no, name, periode, type, total_amount, ite
             cur.execute(sql1, (agent_no, periode, total_amount, type, name))
             commission_report_id = cur.lastrowid
             for item in items:
-                cur.execute(sql2, (commission_report_id, agent_no, ss(item, 5, 13), ss(item, 18, 24), ss(item, 42, 9), ss(item, 51, 1), ss(item, 53, 4), ss(item, 57, 6), get_float(ss(item, 63, 12)), get_float(ss(item, 75, 14))))
+                cur.execute(sql2, (commission_report_id, agent_no, ss(item, 5, 13), ss(item, 18, 24), ss(item, 42, 9), ss(
+                    item, 51, 1), ss(item, 53, 4), ss(item, 57, 6), get_float(ss(item, 63, 12)), get_float(ss(item, 75, 14))))
             conn.commit()
             return cur.lastrowid
         else:
@@ -214,6 +215,7 @@ def db_save_commission_report_2(agent_no, name, periode, type, total_amount, ite
 def db_save_commission_report_3(agent_no, name, periode, type, total_amount, items):
     """ Save Commission report 2 to the database """
     return
+
 
 def main():
 
