@@ -32,7 +32,9 @@ sql_create_commission_reports_table = """CREATE TABLE IF NOT EXISTS "commission_
                                             "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                                             "agent_no" TEXT NOT NULL,
                                             "periode" TEXT,
-                                            "total_amount" NUMERIC,
+                                            "commission_source" NUMERIC,
+                                            "total_premium" NUMERIC,
+                                            "total_commission" NUMERIC,
                                             "description" TEXT,
                                             "type" TEXT
                                         );"""
@@ -46,8 +48,11 @@ sql_create_commission_report_items_table = """CREATE TABLE IF NOT EXISTS "commis
                                                 "product" TEXT,
                                                 "rn" TEXT,
                                                 "akt" TEXT,
+                                                "ok" TEXT,
+                                                "tk" TEXT,
                                                 "from_date" TEXT,
                                                 "premium" NUMBER,
+                                                "commission_source" NUMBER,
                                                 "commission" NUMBER
                                             );"""
 
@@ -72,7 +77,10 @@ def get_str(data: any):
 
 
 def get_float(data: any):
-    return atof(str(data).replace(".", "").replace(",", "."))
+    float_string = str(data).replace(".", "").replace(",", ".")
+    if texist(float_string, len(float_string)-1, "-"):
+        float_string = "-" + get_str(float_string[0:len(float_string)-1])
+    return atof(float_string)
 
 
 def texist(source, start, substr):
@@ -179,7 +187,7 @@ def db_save_commission_settlement(description, periode, agent_no, items):
     return
 
 
-def db_save_commission_report_1(agent_no, name, periode, type, total_amount, items):
+def db_save_commission_report_1(agent_no, name, periode, type, total_premium, total_commission, items):
     """ Save Commission report 1 to the database """
     conn = None
     try:
@@ -187,14 +195,14 @@ def db_save_commission_report_1(agent_no, name, periode, type, total_amount, ite
         if conn is not None:
             db_create_table(conn, sql_create_commission_reports_table)
             db_create_table(conn, sql_create_commission_report_items_table)
-            sql1 = """INSERT INTO commission_reports(agent_no, periode, total_amount, type, description) VALUES(?,?,?,?,?)"""
+            sql1 = """INSERT INTO commission_reports(agent_no, periode, total_premium, total_commission, type, description) VALUES(?,?,?,?,?,?)"""
             sql2 = """INSERT INTO commission_report_items(commission_report_id, agent_no, contract_no, name, product, rn, akt, from_date, premium, commission) VALUES(?,?,?,?,?,?,?,?,?,?)"""
             cur = conn.cursor()
-            cur.execute(sql1, (agent_no, periode, total_amount, type, name))
+            cur.execute(sql1, (agent_no, periode, total_premium, total_commission, type, name))
             commission_report_id = cur.lastrowid
             for item in items:
                 cur.execute(sql2, (commission_report_id, agent_no, ss(item, 5, 13), ss(item, 18, 24), ss(item, 42, 9), ss(
-                    item, 51, 1), ss(item, 53, 4), ss(item, 57, 6), get_float(ss(item, 63, 12)), get_float(ss(item, 75, 14))))
+                    item, 51, 1), ss(item, 53, 4), ss(item, 57, 6), get_float(ss(item, 63, 13)), get_float(ss(item, 76))))
             conn.commit()
             return cur.lastrowid
         else:
@@ -207,13 +215,59 @@ def db_save_commission_report_1(agent_no, name, periode, type, total_amount, ite
     return
 
 
-def db_save_commission_report_2(agent_no, name, periode, type, total_amount, items):
+def db_save_commission_report_2(agent_no, name, periode, type, total_commission, items):
     """ Save Commission report 2 to the database """
+    conn = None
+    try:
+        conn = db_create_connection(database)
+        if conn is not None:
+            db_create_table(conn, sql_create_commission_reports_table)
+            db_create_table(conn, sql_create_commission_report_items_table)
+            sql1 = """INSERT INTO commission_reports(agent_no, periode, total_commission, type, description) VALUES(?,?,?,?,?)"""
+            sql2 = """INSERT INTO commission_report_items(commission_report_id, agent_no, contract_no, name, product, from_date, commission) VALUES(?,?,?,?,?,?,?)"""
+            cur = conn.cursor()
+            cur.execute(sql1, (agent_no, periode, total_commission, type, name))
+            commission_report_id = cur.lastrowid
+            for item in items:
+                cur.execute(sql2, (commission_report_id, agent_no, ss(item, 5, 13), ss(item, 18, 34), ss(item, 52, 30),
+                                   ss(item, 82, 6), get_float(ss(item, 88, 7))))
+            conn.commit()
+            return cur.lastrowid
+        else:
+            print("Error! cannot create the database connection.")
+    except Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.close()
     return
 
 
-def db_save_commission_report_3(agent_no, name, periode, type, total_amount, items):
+def db_save_commission_report_3(agent_no, name, periode, type, commission_source, total_commission, items):
     """ Save Commission report 2 to the database """
+    conn = None
+    try:
+        conn = db_create_connection(database)
+        if conn is not None:
+            db_create_table(conn, sql_create_commission_reports_table)
+            db_create_table(conn, sql_create_commission_report_items_table)
+            sql1 = """INSERT INTO commission_reports(agent_no, periode, commission_source, total_commission, type, description) VALUES(?,?,?,?,?,?)"""
+            sql2 = """INSERT INTO commission_report_items(commission_report_id, agent_no, contract_no, name, product, ok, tk, from_date, commission_source, commission) VALUES(?,?,?,?,?,?,?,?,?,?)"""
+            cur = conn.cursor()
+            cur.execute(sql1, (agent_no, periode, commission_source, total_commission, type, name))
+            commission_report_id = cur.lastrowid
+            for item in items:
+                cur.execute(sql2, (commission_report_id, agent_no, ss(item, 5, 10), ss(item, 15, 16), ss(item, 31, 16),
+                                   ss(item, 47, 1), ss(item, 50, 2), ss(item, 53, 6), get_float(ss(item, 59, 16)), get_float(ss(item, 75))))
+            conn.commit()
+            return cur.lastrowid
+        else:
+            print("Error! cannot create the database connection.")
+    except Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.close()
     return
 
 
@@ -322,7 +376,7 @@ def main():
                     processing_step = ProcessingStep.Default
                     continue
 
-                if commission_report and not texist(element, 50, "TOTALT") and not texist(element, 76, "TOTALT:"):
+                if commission_report and not texist(element, 50, "TOTALT") and not texist(element, 53, "TOTALT") and not texist(element, 76, "TOTALT"):
                     if processing_step == ProcessingStep.Default:
                         commission_report_type = get_str(element).strip("* ")
                         processing_step = ProcessingStep.Header
@@ -347,22 +401,25 @@ def main():
                 if commission_report and texist(element, 50, "TOTALT"):
                     commission_report = False
                     processing_step = ProcessingStep.Default
-                    total_amount = get_float(ss(element, 70, 15))
-                    db_save_commission_report_1(agent_no, commission_report_name, commission_report_periode, commission_report_type, total_amount, commission_report_items)
+                    total_premium = get_float(ss(element, 63, 13))
+                    total_commission = get_float(ss(element, 76))
+                    db_save_commission_report_1(agent_no, commission_report_name, commission_report_periode, commission_report_type, total_premium, total_commission, commission_report_items)
                     continue
 
                 if commission_report and texist(element, 76, "TOTALT"):
                     commission_report = False
                     processing_step = ProcessingStep.Default
-                    total_amount = get_float(ss(element, 83))
-                    db_save_commission_report_2(agent_no, commission_report_name, commission_report_periode, commission_report_type, total_amount, commission_report_items)
+                    total_commission = get_float(ss(element, 89))
+                    db_save_commission_report_2(agent_no, commission_report_name, commission_report_periode, commission_report_type, total_commission, commission_report_items)
                     continue
 
                 if commission_report and texist(element, 53, "TOTALT"):
                     commission_report = False
                     processing_step = ProcessingStep.Default
-                    total_amount = get_float(ss(element, 83))
-                    db_save_commission_report_3(agent_no, commission_report_name, commission_report_periode, commission_report_type, total_amount, commission_report_items)
+                    commission_source = get_float(ss(element, 59, 16))
+                    total_commission = get_float(ss(element, 75))
+                    db_save_commission_report_3(agent_no, commission_report_name, commission_report_periode,
+                                                commission_report_type, commission_source, total_commission, commission_report_items)
                     continue
 
             break
