@@ -1,5 +1,5 @@
 *.PDF
 *.pdf
 __pycache__/*
-test.db
+*.db*
 test.txt

@@ -2,10 +2,9 @@ from enum import Enum, auto
 import re
 import sqlite3
 from sqlite3 import Error
-from locale import atof, setlocale, LC_NUMERIC
-from typing import Optional
-
-database = "test.db"
+from locale import atof
+import argparse
+from datetime import datetime
 
 sql_create_agents_table = """CREATE TABLE IF NOT EXISTS "agents" (
                                 "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
@@ -160,7 +159,7 @@ def db_add_agent(database, agent_no, agentName):
             conn.close()
 
 
-def db_save_commission_settlement(description, periode, agent_no, items):
+def db_save_commission_settlement(database, description, periode, agent_no, items):
     """ Save Commission settlement to the database """
     conn = None
     try:
@@ -187,7 +186,7 @@ def db_save_commission_settlement(description, periode, agent_no, items):
     return
 
 
-def db_save_commission_report_1(agent_no, name, periode, type, total_premium, total_commission, items):
+def db_save_commission_report_1(database, agent_no, name, periode, type, total_premium, total_commission, items):
     """ Save Commission report 1 to the database """
     conn = None
     try:
@@ -215,7 +214,7 @@ def db_save_commission_report_1(agent_no, name, periode, type, total_premium, to
     return
 
 
-def db_save_commission_report_2(agent_no, name, periode, type, total_commission, items):
+def db_save_commission_report_2(database, agent_no, name, periode, type, total_commission, items):
     """ Save Commission report 2 to the database """
     conn = None
     try:
@@ -243,7 +242,7 @@ def db_save_commission_report_2(agent_no, name, periode, type, total_commission,
     return
 
 
-def db_save_commission_report_3(agent_no, name, periode, type, commission_source, total_commission, items):
+def db_save_commission_report_3(database, agent_no, name, periode, type, commission_source, total_commission, items):
     """ Save Commission report 2 to the database """
     conn = None
     try:
@@ -271,13 +270,12 @@ def db_save_commission_report_3(agent_no, name, periode, type, commission_source
     return
 
 
-def main():
+def pdf_parser(input_file, database):
 
     # Testing purposes only
-    data = slices('Dette er en test', 6, 3, 3, 10)
-
-    for d in data:
-        print(d)
+    # data = slices('Dette er en test', 6, 3, 3, 10)
+    # for d in data:
+    #     print(d)
 
     # Main program
     encodings = ["utf-8", "ISO-8859-1", "windows-1250", "windows-1252"]
@@ -363,7 +361,7 @@ def main():
                 if commission_settlemenmt and texist(element, 5, "TOTALT"):
                     commission_settlemenmt = False
                     total_amount = get_float(ss(element, 31))
-                    db_save_commission_settlement(commission_settlemenmt_name, commission_settlemenmt_periode, agent_no, commission_settlemenmt_items)
+                    db_save_commission_settlement(database, commission_settlemenmt_name, commission_settlemenmt_periode, agent_no, commission_settlemenmt_items)
                     continue
 
                 # Commission report
@@ -403,14 +401,14 @@ def main():
                     processing_step = ProcessingStep.Default
                     total_premium = get_float(ss(element, 63, 13))
                     total_commission = get_float(ss(element, 76))
-                    db_save_commission_report_1(agent_no, commission_report_name, commission_report_periode, commission_report_type, total_premium, total_commission, commission_report_items)
+                    db_save_commission_report_1(database, agent_no, commission_report_name, commission_report_periode, commission_report_type, total_premium, total_commission, commission_report_items)
                     continue
 
                 if commission_report and texist(element, 76, "TOTALT"):
                     commission_report = False
                     processing_step = ProcessingStep.Default
                     total_commission = get_float(ss(element, 89))
-                    db_save_commission_report_2(agent_no, commission_report_name, commission_report_periode, commission_report_type, total_commission, commission_report_items)
+                    db_save_commission_report_2(database, agent_no, commission_report_name, commission_report_periode, commission_report_type, total_commission, commission_report_items)
                     continue
 
                 if commission_report and texist(element, 53, "TOTALT"):
@@ -418,12 +416,26 @@ def main():
                     processing_step = ProcessingStep.Default
                     commission_source = get_float(ss(element, 59, 16))
                     total_commission = get_float(ss(element, 75))
-                    db_save_commission_report_3(agent_no, commission_report_name, commission_report_periode,
+                    db_save_commission_report_3(database, agent_no, commission_report_name, commission_report_periode,
                                                 commission_report_type, commission_source, total_commission, commission_report_items)
                     continue
 
             break
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file", type=argparse.FileType("r"), nargs="+", help="Files to parse. Separate with space.")
+    parser.add_argument("--db", nargs="+", help="Output SQLite3 database file.", default="data-{0}.db".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
+    args = parser.parse_args()
+
+    if(not args.file):
+        parser.print_help()
+        return
+
+    input_file = "test.pdf"
+    database = "test.db"
+
+    pdf_parser(input_file, database)
 
 if __name__ == '__main__':
     main()
