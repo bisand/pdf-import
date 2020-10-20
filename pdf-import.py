@@ -1,9 +1,9 @@
-from enum import Enum, auto
 import re
 import sqlite3
+import argparse
+from enum import Enum, auto
 from sqlite3 import Error
 from locale import atof
-import argparse
 from datetime import datetime
 
 sql_create_agents_table = """CREATE TABLE IF NOT EXISTS "agents" (
@@ -401,14 +401,16 @@ def pdf_parser(input_file, database):
                     processing_step = ProcessingStep.Default
                     total_premium = get_float(ss(element, 63, 13))
                     total_commission = get_float(ss(element, 76))
-                    db_save_commission_report_1(database, agent_no, commission_report_name, commission_report_periode, commission_report_type, total_premium, total_commission, commission_report_items)
+                    db_save_commission_report_1(database, agent_no, commission_report_name, commission_report_periode,
+                                                commission_report_type, total_premium, total_commission, commission_report_items)
                     continue
 
                 if commission_report and texist(element, 76, "TOTALT"):
                     commission_report = False
                     processing_step = ProcessingStep.Default
                     total_commission = get_float(ss(element, 89))
-                    db_save_commission_report_2(database, agent_no, commission_report_name, commission_report_periode, commission_report_type, total_commission, commission_report_items)
+                    db_save_commission_report_2(database, agent_no, commission_report_name, commission_report_periode,
+                                                commission_report_type, total_commission, commission_report_items)
                     continue
 
                 if commission_report and texist(element, 53, "TOTALT"):
@@ -422,20 +424,22 @@ def pdf_parser(input_file, database):
 
             break
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--file", type=argparse.FileType("r"), nargs="+", help="Files to parse. Separate with space.")
-    parser.add_argument("--db", nargs="+", help="Output SQLite3 database file.", default="data-{0}.db".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
+    parser.add_argument("-f", "--files", type=argparse.FileType("r"), nargs="+", help="PDF files to parse. Separate with space.", required=True)
+    parser.add_argument("-d", "--database", help="Output SQLite3 database file.", default="data-{0}.db".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
     args = parser.parse_args()
 
-    if(not args.file):
+    if(not args.files):
         parser.print_help()
         return
 
-    input_file = "test.pdf"
-    database = "test.db"
+    database = args.database
 
-    pdf_parser(input_file, database)
+    for file in args.files:
+        pdf_parser(file, database)
+
 
 if __name__ == '__main__':
     main()
