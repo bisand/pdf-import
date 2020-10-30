@@ -1,10 +1,23 @@
+from io import FileIO
 import re
 import sqlite3
 import argparse
+import os.path
 from enum import Enum, auto
 from sqlite3 import Error
 from locale import atof
 from datetime import datetime
+
+import subprocess
+import sys
+
+try:
+    from openpyxl import Workbook
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", 'openpyxl'])
+finally:
+    from openpyxl import Workbook
+
 
 sql_create_agents_table = """CREATE TABLE IF NOT EXISTS "agents" (
                                 "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
@@ -424,11 +437,23 @@ def pdf_parser(input_file, database):
 
             break
 
+def export_excel(database, excel_filename):
+    workbook = Workbook()
+    sheet = workbook.active
+
+    sheet["A1"] = "hello"
+    sheet["B1"] = "world!"
+
+    workbook.save(filename=excel_filename)
+    return
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--files", type=argparse.FileType("r"), nargs="+", help="PDF files to parse. Separate with space.", required=True)
     parser.add_argument("-d", "--database", help="Output SQLite3 database file.", default="data-{0}.db".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
+    parser.add_argument("-x", "--excel", help="Output Excel file.", default="data-{0}.xlsx".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
+    parser.add_argument("-o", "--overwrite", help="Overwrite Excel file.", action="store_true")
+
     args = parser.parse_args()
 
     if(not args.files):
@@ -440,6 +465,10 @@ def main():
     for file in args.files:
         pdf_parser(file, database)
 
+    if os.path.exists(args.excel) and not args.overwrite:
+        return
+
+    export_excel(args.database, args.excel)
 
 if __name__ == '__main__':
     main()

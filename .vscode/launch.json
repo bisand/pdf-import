@@ -9,6 +9,15 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
+            "args": [
+                "--files",
+                "test.pdf",
+                "--database",
+                "test.db",
+                "--excel",
+                "test.xlsx",
+                "--overwrite"
+            ],
             "console": "integratedTerminal"
         }
     ]
