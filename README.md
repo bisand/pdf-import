@@ -14,6 +14,7 @@ Import special PDF files into SQLite databases and export again to Excel files u
   -x EXCEL, --excel EXCEL
                         Output Excel file.
   -o, --overwrite       Overwrite Excel file.
-
+```
+```bash
 > python pdf-import.py --files test.pdf --database test.db --excel test.xlsx --query "select * from commission_report_items" --overwrite
 ```
