@@ -143,6 +143,25 @@ def db_create_table(conn, create_table_sql):
         print(e)
 
 
+def db_query(database, sql):
+    """ Save agent to database """
+    conn = None
+    try:
+        conn = db_create_connection(database)
+        if conn is not None:
+            cur = conn.cursor()
+            cur.execute(sql)
+            result = cur.fetchall()
+            col_name_list = [tuple[0] for tuple in cur.description]
+            return [col_name_list, result]
+        else:
+            print("Error! cannot create the database connection.")
+    except Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.close()
+
 def db_add_agent(database, agent_no, agentName):
     """ Save agent to database """
     conn = None
@@ -437,38 +456,50 @@ def pdf_parser(input_file, database):
 
             break
 
-def export_excel(database, excel_filename):
-    workbook = Workbook()
-    sheet = workbook.active
+def export_excel(database, sql, excel_filename):
+    wb = Workbook()
+    ws = wb.active
 
-    sheet["A1"] = "hello"
-    sheet["B1"] = "world!"
+    result = db_query(database, sql)
+    if(result and len(result) > 0):
+        ws.append(result[0])
+    if(result and len(result) > 0):
+        for row in result[1]:
+            ws.append(row)
 
-    workbook.save(filename=excel_filename)
+    wb.save(filename=excel_filename)
     return
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--files", type=argparse.FileType("r"), nargs="+", help="PDF files to parse. Separate with space.", required=True)
+    parser.add_argument("-f", "--files", type=argparse.FileType("r"), nargs="+", help="PDF files to parse. Separate with space.")
     parser.add_argument("-d", "--database", help="Output SQLite3 database file.", default="data-{0}.db".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
+    parser.add_argument("-q", "--query", help="SQL query to export to Excel file.", default="")
     parser.add_argument("-x", "--excel", help="Output Excel file.", default="data-{0}.xlsx".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
     parser.add_argument("-o", "--overwrite", help="Overwrite Excel file.", action="store_true")
 
     args = parser.parse_args()
 
-    if(not args.files):
+    if not args.files and not args.query:
         parser.print_help()
         return
 
     database = args.database
 
-    for file in args.files:
-        pdf_parser(file, database)
+    if args.files:
+        for file in args.files:
+            pdf_parser(file, database)
 
     if os.path.exists(args.excel) and not args.overwrite:
+        print("Error! Excel file \"{0}\" already exist. Choose an other name or use the --overwrite flag.".format(args.excel))
         return
 
-    export_excel(args.database, args.excel)
+    if args.query and not os.path.exists(args.database):
+        print("Error! Database file \"{0}\" do not exist. Please specify a SQLite database with the parameter --database.".format(args.database))
+        return
+
+    if args.query != "":
+        export_excel(args.database, args.query, args.excel)
 
 if __name__ == '__main__':
     main()

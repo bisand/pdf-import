@@ -4,3 +4,4 @@ __pycache__/*
 *.db*
 *.xls*
 test.txt
+.vscode/settings.json

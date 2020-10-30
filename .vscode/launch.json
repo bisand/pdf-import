@@ -8,7 +8,8 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            // "program": "${file}",
+            "program": "pdf-import.py",
             "args": [
                 "--files",
                 "test.pdf",
@@ -16,6 +17,8 @@
                 "test.db",
                 "--excel",
                 "test.xlsx",
+                "--query",
+                "select * from commission_report_items",
                 "--overwrite"
             ],
             "console": "integratedTerminal"
