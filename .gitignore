@@ -2,4 +2,5 @@
 *.pdf
 __pycache__/*
 *.db*
+*.xls*
 test.txt
