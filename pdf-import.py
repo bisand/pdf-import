@@ -162,6 +162,7 @@ def db_query(database, sql):
         if conn:
             conn.close()
 
+
 def db_add_agent(database, agent_no, agentName):
     """ Save agent to database """
     conn = None
@@ -205,7 +206,8 @@ def db_save_commission_settlement(database, description, periode, agent_no, item
             cur.execute(sql1, (agent_no, periode, description))
             commission_settlement_id = cur.lastrowid
             for item in items:
-                cur.execute(sql2, (commission_settlement_id, agent_no, ss(item, 5, 39), ss(item, 44)))
+                cur.execute(sql2, (commission_settlement_id,
+                                   agent_no, ss(item, 5, 39), ss(item, 44)))
             conn.commit()
             return cur.lastrowid
         else:
@@ -229,7 +231,8 @@ def db_save_commission_report_1(database, agent_no, name, periode, type, total_p
             sql1 = """INSERT INTO commission_reports(agent_no, periode, total_premium, total_commission, type, description) VALUES(?,?,?,?,?,?)"""
             sql2 = """INSERT INTO commission_report_items(commission_report_id, agent_no, contract_no, name, product, rn, akt, from_date, premium, commission) VALUES(?,?,?,?,?,?,?,?,?,?)"""
             cur = conn.cursor()
-            cur.execute(sql1, (agent_no, periode, total_premium, total_commission, type, name))
+            cur.execute(sql1, (agent_no, periode, total_premium,
+                               total_commission, type, name))
             commission_report_id = cur.lastrowid
             for item in items:
                 cur.execute(sql2, (commission_report_id, agent_no, ss(item, 5, 13), ss(item, 18, 24), ss(item, 42, 9), ss(
@@ -257,7 +260,8 @@ def db_save_commission_report_2(database, agent_no, name, periode, type, total_c
             sql1 = """INSERT INTO commission_reports(agent_no, periode, total_commission, type, description) VALUES(?,?,?,?,?)"""
             sql2 = """INSERT INTO commission_report_items(commission_report_id, agent_no, contract_no, name, product, from_date, commission) VALUES(?,?,?,?,?,?,?)"""
             cur = conn.cursor()
-            cur.execute(sql1, (agent_no, periode, total_commission, type, name))
+            cur.execute(sql1, (agent_no, periode,
+                               total_commission, type, name))
             commission_report_id = cur.lastrowid
             for item in items:
                 cur.execute(sql2, (commission_report_id, agent_no, ss(item, 5, 13), ss(item, 18, 34), ss(item, 52, 30),
@@ -285,7 +289,8 @@ def db_save_commission_report_3(database, agent_no, name, periode, type, commiss
             sql1 = """INSERT INTO commission_reports(agent_no, periode, commission_source, total_commission, type, description) VALUES(?,?,?,?,?,?)"""
             sql2 = """INSERT INTO commission_report_items(commission_report_id, agent_no, contract_no, name, product, ok, tk, from_date, commission_source, commission) VALUES(?,?,?,?,?,?,?,?,?,?)"""
             cur = conn.cursor()
-            cur.execute(sql1, (agent_no, periode, commission_source, total_commission, type, name))
+            cur.execute(sql1, (agent_no, periode, commission_source,
+                               total_commission, type, name))
             commission_report_id = cur.lastrowid
             for item in items:
                 cur.execute(sql2, (commission_report_id, agent_no, ss(item, 5, 10), ss(item, 15, 16), ss(item, 31, 16),
@@ -335,7 +340,8 @@ def pdf_parser(input_file, database):
                 pageTitle = match.group("title")
                 if not page:
                     continue
-                sub_matches = re.finditer(regex_text, page, re.MULTILINE | re.IGNORECASE)
+                sub_matches = re.finditer(
+                    regex_text, page, re.MULTILINE | re.IGNORECASE)
                 sub_matches_enum = enumerate(sub_matches, start=1)
 
                 for subMatchNum, sub_match in sub_matches_enum:
@@ -393,7 +399,8 @@ def pdf_parser(input_file, database):
                 if commission_settlemenmt and texist(element, 5, "TOTALT"):
                     commission_settlemenmt = False
                     total_amount = get_float(ss(element, 31))
-                    db_save_commission_settlement(database, commission_settlemenmt_name, commission_settlemenmt_periode, agent_no, commission_settlemenmt_items)
+                    db_save_commission_settlement(
+                        database, commission_settlemenmt_name, commission_settlemenmt_periode, agent_no, commission_settlemenmt_items)
                     continue
 
                 # Commission report
@@ -456,6 +463,7 @@ def pdf_parser(input_file, database):
 
             break
 
+
 def export_excel(database, sql, excel_filename):
     wb = Workbook()
     ws = wb.active
@@ -470,13 +478,19 @@ def export_excel(database, sql, excel_filename):
     wb.save(filename=excel_filename)
     return
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--files", type=argparse.FileType("r"), nargs="+", help="PDF files to parse. Separate with space.")
-    parser.add_argument("-d", "--database", help="Output SQLite3 database file.", default="data-{0}.db".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
-    parser.add_argument("-q", "--query", help="SQL query to export to Excel file.", default="")
-    parser.add_argument("-x", "--excel", help="Output Excel file.", default="data-{0}.xlsx".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
-    parser.add_argument("-o", "--overwrite", help="Overwrite Excel file.", action="store_true")
+    parser.add_argument("-f", "--files", type=argparse.FileType("r"),
+                        nargs="+", help="PDF files to parse. Separate with space.")
+    parser.add_argument("-d", "--database", help="Output SQLite3 database file.",
+                        default="data-{0}.db".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
+    parser.add_argument(
+        "-q", "--query", help="SQL query to export to Excel file.", default="")
+    parser.add_argument("-x", "--excel", help="Output Excel file.",
+                        default="data-{0}.xlsx".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
+    parser.add_argument("-o", "--overwrite",
+                        help="Overwrite Excel file.", action="store_true")
 
     args = parser.parse_args()
 
@@ -491,15 +505,18 @@ def main():
             pdf_parser(file, database)
 
     if os.path.exists(args.excel) and not args.overwrite:
-        print("Error! Excel file \"{0}\" already exist. Choose an other name or use the --overwrite flag.".format(args.excel))
+        print(
+            "Error! Excel file \"{0}\" already exist. Choose an other name or use the --overwrite flag.".format(args.excel))
         return
 
     if args.query and not os.path.exists(args.database):
-        print("Error! Database file \"{0}\" do not exist. Please specify a SQLite database with the parameter --database.".format(args.database))
+        print(
+            "Error! Database file \"{0}\" do not exist. Please specify a SQLite database with the parameter --database.".format(args.database))
         return
 
     if args.query != "":
         export_excel(args.database, args.query, args.excel)
+
 
 if __name__ == '__main__':
     main()
